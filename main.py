@@ -4,6 +4,42 @@ import os
 import neat
 import random
 import math
+import pickle
+
+SAVE_FILE = "simulation_save.pkl"
+
+def save_simulation(world, creatures, foods, time_info, neat_pop):
+    """Saves the current simulation state to a file using pickle."""
+    state = {
+        'world': world,
+        'creatures': creatures,
+        'foods': foods,
+        'time_info': time_info,
+        'neat_population': neat_pop.population,
+        'neat_species': neat_pop.species,
+        'neat_generation': neat_pop.generation,
+        'random_state': random.getstate(),
+    }
+    try:
+        with open(SAVE_FILE, 'wb') as f:
+            pickle.dump(state, f)
+        print(f"--- Simulation state saved to {SAVE_FILE} ---")
+    except Exception as e:
+        print(f"Error saving simulation: {e}")
+
+def load_simulation():
+    """Loads a simulation state from a file."""
+    try:
+        with open(SAVE_FILE, 'rb') as f:
+            state = pickle.load(f)
+        print(f"--- Simulation state loaded from {SAVE_FILE} ---")
+        return state
+    except FileNotFoundError:
+        print(f"Save file not found: {SAVE_FILE}")
+        return None
+    except Exception as e:
+        print(f"Error loading simulation: {e}")
+        return None
 
 from settings import *
 from entities.creature import Herbivore, Carnivore
@@ -62,6 +98,19 @@ def run(config_file):
             if event.type == pygame.QUIT: running = False
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_p: is_paused = not is_paused
+                if event.key == pygame.K_F5:
+                    save_simulation(world, creatures, foods, time_info, p)
+                if event.key == pygame.K_F9:
+                    state = load_simulation()
+                    if state:
+                        world, creatures, foods, time_info = state['world'], state['creatures'], state['foods'], state['time_info']
+                        p.population, p.species, p.generation = state['neat_population'], state['neat_species'], state['neat_generation']
+                        random.setstate(state['random_state'])
+                        # Re-create networks from genomes to be safe
+                        for c in creatures:
+                            c.net = neat.nn.FeedForwardNetwork.create(c.genome, config)
+                        print("--- Simulation state fully restored. ---")
+
                 if event.key == pygame.K_RIGHT: simulation_speed = min(5, simulation_speed + 1)
                 if event.key == pygame.K_LEFT: simulation_speed = max(1, simulation_speed - 1)
                 if event.key == pygame.K_f: current_tool = "spawn_food"
