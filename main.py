@@ -1,4 +1,3 @@
-```python:Orquestrador Principal (Com Interações):simulador_vida/main.py
 import pygame
 import sys
 import os
@@ -42,10 +41,14 @@ def run(config_file):
     initial_genomes = list(p.population.values())
     for i, genome in enumerate(initial_genomes):
         genome.fitness = 0
+        # Assign tribe based on index
+        tribe_id = i % NUMBER_OF_TRIBES_PER_SPECIES
+        tribe_color = TRIBE_COLORS[tribe_id]
+
         if i % 4 != 0: # 75% Herbívoros
-            creatures.append(Herbivore(world, assets, genome, config))
+            creatures.append(Herbivore(world, assets, genome, config, tribe_id, tribe_color))
         else: # 25% Carnívoros
-            creatures.append(Carnivore(world, assets, genome, config))
+            creatures.append(Carnivore(world, assets, genome, config, tribe_id, tribe_color))
 
     foods = [Food(world, assets) for _ in range(120)]
     time_info = {'world_time': 0, 'season_timer': 0, 'current_season': "Primavera"}
@@ -72,8 +75,14 @@ def run(config_file):
                 elif current_tool:
                     genome = random.choice(list(p.population.values()))
                     if current_tool == "spawn_food": foods.append(Food(world, assets, pos))
-                    elif current_tool == "spawn_herbivore": creatures.append(Herbivore(world, assets, genome, config, nest_pos=pos))
-                    elif current_tool == "spawn_carnivore": creatures.append(Carnivore(world, assets, genome, config, nest_pos=pos))
+                    elif current_tool == "spawn_herbivore":
+                        tribe_id = random.randint(0, NUMBER_OF_TRIBES_PER_SPECIES - 1)
+                        tribe_color = TRIBE_COLORS[tribe_id]
+                        creatures.append(Herbivore(world, assets, genome, config, tribe_id, tribe_color, nest_pos=pos))
+                    elif current_tool == "spawn_carnivore":
+                        tribe_id = random.randint(0, NUMBER_OF_TRIBES_PER_SPECIES - 1)
+                        tribe_color = TRIBE_COLORS[tribe_id]
+                        creatures.append(Carnivore(world, assets, genome, config, tribe_id, tribe_color, nest_pos=pos))
                     elif current_tool == "smite":
                         for c in creatures[:]:
                             if math.hypot(pos[0]-c.x, pos[1]-c.y) < CELL_SIZE:
@@ -162,4 +171,3 @@ if __name__ == '__main__':
     local_dir = os.path.dirname(__file__)
     config_path = os.path.join(local_dir, 'config-feedforward.txt')
     run(config_path)
-```eof
