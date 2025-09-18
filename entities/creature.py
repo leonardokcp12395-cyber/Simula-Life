@@ -36,6 +36,8 @@ class Creature:
         self.night_vision_gene = random.random() < 0.2
 
         # State & Memory
+        self.state = 'exploring'  # States: exploring, going_to_sleep, sleeping
+        self.tiredness = 0.0
         self.short_term_memory = {'food': None, 'threat': None}
         self.target = None
 
@@ -80,6 +82,10 @@ class Creature:
         self.age += 1
         self.energy -= 0.25 # Base energy decay
 
+        # Creatures get tired over time
+        if self.state != 'sleeping':
+            self.tiredness += 0.1
+
         if self.energy > 800 and self.age > 1000:
             self.reproduction_urge = min(1.0, self.reproduction_urge + 0.005)
 
@@ -90,7 +96,24 @@ class Creature:
         if is_night and not self.night_vision_gene:
             effective_vision *= 0.3
 
-        return effective_vision, time_of_day_norm
+        return effective_vision, time_of_day_norm, is_night
+
+    def _manage_state(self):
+        # If we are heading home, check if we've arrived
+        if self.state == 'going_to_sleep':
+            dist_to_nest = math.hypot(self.x - self.nest_x, self.y - self.nest_y)
+            if dist_to_nest < CELL_SIZE:
+                self.state = 'sleeping'
+                self.angle = random.uniform(0, 2 * math.pi) # Stop moving
+
+        # If sleeping, rest and regenerate energy
+        if self.state == 'sleeping':
+            self.tiredness = max(0, self.tiredness - 1.5)  # Rest faster than getting tired
+            self.energy = min(1000, self.energy + 2.0)  # Regenerate energy while sleeping
+
+            # Wake up when fully rested and with high energy
+            if self.tiredness <= 0 and self.energy > 950:
+                self.state = 'exploring'
 
     def _move(self, outputs):
         move_angle_offset = outputs[0] * math.pi / 2 # More subtle turning
@@ -138,11 +161,27 @@ class Herbivore(Creature):
         self.nest_sprite = assets['herbivore_nest']
 
     def update(self, foods, carnivores, herbivores, time_info):
-        effective_vision, time_of_day_norm = self._update_common_state(time_info)
+        effective_vision, time_of_day_norm, is_night = self._update_common_state(time_info)
+        self._manage_state()
 
+        # If sleeping, do nothing
+        if self.state == 'sleeping':
+            self.target = None
+            return
+
+        # If going home, override AI
+        if self.state == 'going_to_sleep':
+            self.target = pygame.Rect(self.nest_x, self.nest_y, 1, 1)
+            nest_dx, nest_dy = self.get_vector_to({'x': self.nest_x, 'y': self.nest_y}, 10000)
+            angle_to_nest = math.atan2(nest_dy, nest_dx)
+            angle_diff = (angle_to_nest - self.angle + math.pi) % (2 * math.pi) - math.pi
+            outputs = [angle_diff, 1.0, -1.0] # Go to nest, low sleep desire
+            self._move(outputs)
+            return
+
+        # --- Normal AI logic (when exploring) ---
         sensed_food = min([f for f in foods if math.hypot(self.x - f.x, self.y - f.y) < effective_vision], key=lambda f: math.hypot(self.x - f.x, self.y - f.y), default=None)
         sensed_threat = min([c for c in carnivores if math.hypot(self.x - c.x, self.y - c.y) < effective_vision], key=lambda c: math.hypot(self.x - c.x, self.y - c.y), default=None)
-
         self.target = sensed_food if sensed_food else sensed_threat
 
         tribemates = [h for h in herbivores if h != self and h.tribe_id == self.tribe_id and math.hypot(self.x-h.x, self.y-h.y) < effective_vision]
@@ -170,9 +209,15 @@ class Herbivore(Creature):
 
         inputs = (food_dx, food_dy, pred_dx, pred_dy, mate_dx, mate_dy,
                   num_tribemates / 10.0, tribemate_center_dx, tribemate_center_dy,
-                  rival_dx, rival_dy, mem_food_dx, mem_food_dy, nest_dx, nest_dy, time_of_day_norm)
+                  rival_dx, rival_dy, mem_food_dx, mem_food_dy, nest_dx, nest_dy,
+                  time_of_day_norm, self.tiredness / 150.0) # New tiredness input
 
         outputs = self.net.activate(inputs)
+
+        # Let the NN decide to sleep
+        if self.state == 'exploring' and outputs[2] > 0.5: # High activation on 3rd output
+            self.state = 'going_to_sleep'
+
         self._move(outputs)
 
 
@@ -183,8 +228,25 @@ class Carnivore(Creature):
         self.nest_sprite = assets['carnivore_nest']
 
     def update(self, herbivores, carnivores, time_info):
-        effective_vision, time_of_day_norm = self._update_common_state(time_info)
+        effective_vision, time_of_day_norm, is_night = self._update_common_state(time_info)
+        self._manage_state()
 
+        # If sleeping, do nothing
+        if self.state == 'sleeping':
+            self.target = None
+            return
+
+        # If going home, override AI
+        if self.state == 'going_to_sleep':
+            self.target = pygame.Rect(self.nest_x, self.nest_y, 1, 1)
+            nest_dx, nest_dy = self.get_vector_to({'x': self.nest_x, 'y': self.nest_y}, 10000)
+            angle_to_nest = math.atan2(nest_dy, nest_dx)
+            angle_diff = (angle_to_nest - self.angle + math.pi) % (2 * math.pi) - math.pi
+            outputs = [angle_diff, 1.0, -1.0] # Go to nest, low sleep desire
+            self._move(outputs)
+            return
+
+        # --- Normal AI logic (when exploring) ---
         sensed_prey = min([h for h in herbivores if math.hypot(self.x - h.x, self.y - h.y) < effective_vision], key=lambda h: math.hypot(self.x - h.x, self.y - h.y), default=None)
         self.target = sensed_prey
 
@@ -212,7 +274,13 @@ class Carnivore(Creature):
 
         inputs = (prey_dx, prey_dy, pred_dx, pred_dy, mate_dx, mate_dy,
                   num_tribemates / 10.0, tribemate_center_dx, tribemate_center_dy,
-                  rival_dx, rival_dy, mem_prey_dx, mem_prey_dy, nest_dx, nest_dy, time_of_day_norm)
+                  rival_dx, rival_dy, mem_prey_dx, mem_prey_dy, nest_dx, nest_dy,
+                  time_of_day_norm, self.tiredness / 150.0)
 
         outputs = self.net.activate(inputs)
+
+        # Let the NN decide to sleep
+        if self.state == 'exploring' and outputs[2] > 0.5:
+            self.state = 'going_to_sleep'
+
         self._move(outputs)
