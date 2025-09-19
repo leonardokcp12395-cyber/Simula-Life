@@ -41,6 +41,10 @@ class Creature:
         self.short_term_memory = {'food': None, 'threat': None}
         self.target = None
 
+        # Animation
+        self.animation_timer = 0
+        self.animation_frame_index = 0
+
     def _find_spawn_point(self):
         while True:
             grid_x = random.randint(0, GRID_WIDTH - 1)
@@ -137,10 +141,20 @@ class Creature:
         self.energy -= (speed * 0.1) * terrain_cost
 
     def draw(self, screen, is_selected):
+        # Update animation frame
+        self.animation_timer += 1
+        if self.animation_timer > 15: # Change frame every 15 ticks
+            self.animation_timer = 0
+            self.animation_frame_index = (self.animation_frame_index + 1) % len(self.animation_frames)
+
+        current_frame = self.animation_frames[self.animation_frame_index]
+
+        # Draw Nest
         nest_rect = self.nest_sprite.get_rect(center=(self.nest_x, self.nest_y))
         screen.blit(self.nest_sprite, nest_rect)
 
-        rotated_sprite = pygame.transform.rotate(self.base_sprite, -math.degrees(self.angle) + 90)
+        # Draw Creature
+        rotated_sprite = pygame.transform.rotate(current_frame, -math.degrees(self.angle) + 90)
         rect = rotated_sprite.get_rect(center=(int(self.x), int(self.y)))
 
         shadow_rect = self.assets['shadow'].get_rect(center=(int(self.x+2), int(self.y+2)))
@@ -157,7 +171,7 @@ class Creature:
 class Herbivore(Creature):
     def __init__(self, world_map, assets, genome, config, tribe_id, tribe_color, nest_pos=None):
         super().__init__(world_map, assets, genome, config, tribe_id, tribe_color, nest_pos)
-        self.base_sprite = assets[f'herbivore_base_{tribe_id}']
+        self.animation_frames = assets[f'herbivore_base_{tribe_id}']
         self.nest_sprite = assets['herbivore_nest']
 
     def update(self, foods, carnivores, herbivores, time_info):
@@ -224,7 +238,7 @@ class Herbivore(Creature):
 class Carnivore(Creature):
     def __init__(self, world_map, assets, genome, config, tribe_id, tribe_color, nest_pos=None):
         super().__init__(world_map, assets, genome, config, tribe_id, tribe_color, nest_pos)
-        self.base_sprite = assets[f'carnivore_base_{tribe_id}']
+        self.animation_frames = assets[f'carnivore_base_{tribe_id}']
         self.nest_sprite = assets['carnivore_nest']
 
     def update(self, herbivores, carnivores, time_info):
