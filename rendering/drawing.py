@@ -42,14 +42,18 @@ def draw_main_ui(screen, time_info, creature_counts, simulation_speed):
 
     # Prepare text
     time_text = FONT_MEDIUM.render(f"Season: {time_info['current_season']} | Day: {total_days} | {hour:02d}:00", True, (255, 255, 255))
-    herb_text = FONT_MEDIUM.render(f"Herbivores: {creature_counts['herbivores']}", True, (100, 255, 100))
-    carn_text = FONT_MEDIUM.render(f"Carnivores: {creature_counts['carnivores']}", True, (255, 100, 100))
     speed_text = FONT_MEDIUM.render(f"Speed: {simulation_speed}x", True, (200, 200, 255))
 
-    # Blit text
+    # Blit time and speed
     screen.blit(time_text, (10, 10))
-    screen.blit(herb_text, (450, 10))
-    screen.blit(carn_text, (650, 10))
+    screen.blit(speed_text, (SCREEN_WIDTH - 120, 10))
+
+    # Blit dynamic creature counts
+    x_offset = 450
+    for name, count in creature_counts.items():
+        text = FONT_MEDIUM.render(f"{name}: {count}", True, (200, 200, 200))
+        screen.blit(text, (x_offset, 10))
+        x_offset += text.get_width() + 20
     screen.blit(speed_text, (SCREEN_WIDTH - 120, 10))
 
 def draw_inspector_panel(screen, creature):
@@ -129,26 +133,23 @@ def draw_statistics_panel(screen, history):
 
     # Find max population for y-axis scaling
     max_pop = 1
-    for data in history:
-        max_pop = max(max_pop, data['herbivores'], data['carnivores'])
+    if history:
+        for data in history:
+            max_pop = max(max_pop, *data.values())
 
-    # Prepare data points
-    herb_points = []
-    carn_points = []
-    for i, data in enumerate(history):
-        x = graph_rect.x + (i / max(1, len(history) - 1)) * graph_rect.width
+    # Prepare and draw lines for each species
+    archetype_names = list(history[0].keys()) if history else []
+    colors = [(100, 255, 100), (255, 100, 100), (100, 100, 255), (255, 255, 100)]
 
-        y_herb = graph_rect.y + graph_rect.height - (data['herbivores'] / max_pop) * graph_rect.height
-        herb_points.append((x, y_herb))
+    for j, name in enumerate(archetype_names):
+        points = []
+        for i, data in enumerate(history):
+            x = graph_rect.x + (i / max(1, len(history) - 1)) * graph_rect.width
+            y = graph_rect.y + graph_rect.height - (data.get(name, 0) / max_pop) * graph_rect.height
+            points.append((x, y))
 
-        y_carn = graph_rect.y + graph_rect.height - (data['carnivores'] / max_pop) * graph_rect.height
-        carn_points.append((x, y_carn))
-
-    # Draw lines
-    if len(herb_points) > 1:
-        pygame.draw.lines(panel, (100, 255, 100), False, herb_points, 2)
-    if len(carn_points) > 1:
-        pygame.draw.lines(panel, (255, 100, 100), False, carn_points, 2)
+        if len(points) > 1:
+            pygame.draw.lines(panel, colors[j % len(colors)], False, points, 2)
 
     # Draw axes and labels
     pygame.draw.line(panel, (255, 255, 255), (graph_rect.left, graph_rect.bottom), (graph_rect.right, graph_rect.bottom), 1) # X-axis
