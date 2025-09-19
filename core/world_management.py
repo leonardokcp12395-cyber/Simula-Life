@@ -1,4 +1,4 @@
-import noise
+from perlin_noise import PerlinNoise
 import random
 from settings import GRID_WIDTH, GRID_HEIGHT, SCALE, OCTAVES, PERSISTENCE, LACUNARITY, TERRAINS, DAY_LENGTH, SEASON_LENGTH
 from entities.food import Food
@@ -9,18 +9,12 @@ def generate_world(seed):
     The world is a 2D grid where each cell is a dictionary containing terrain info.
     """
     world_map = [[{} for _ in range(GRID_HEIGHT)] for _ in range(GRID_WIDTH)]
+    noise = PerlinNoise(octaves=OCTAVES, seed=seed)
 
     for x in range(GRID_WIDTH):
         for y in range(GRID_HEIGHT):
             # Generate a noise value using Perlin noise
-            noise_val = noise.pnoise2(x / SCALE,
-                                      y / SCALE,
-                                      octaves=OCTAVES,
-                                      persistence=PERSISTENCE,
-                                      lacunarity=LACUNARITY,
-                                      repeatx=GRID_WIDTH,
-                                      repeaty=GRID_HEIGHT,
-                                      base=seed)
+            noise_val = noise([x / SCALE, y / SCALE])
 
             # Map noise value to terrain type
             terrain_type = "DEEP_WATER" # Default

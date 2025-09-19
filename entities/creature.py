@@ -275,7 +275,7 @@ class Carnivore(Creature):
         inputs = (prey_dx, prey_dy, pred_dx, pred_dy, mate_dx, mate_dy,
                   num_tribemates / 10.0, tribemate_center_dx, tribemate_center_dy,
                   rival_dx, rival_dy, mem_prey_dx, mem_prey_dy, nest_dx, nest_dy,
-                  time_of_day_norm, self.tiredness / 150.0)
+                  time_of_day_norm, self.tiredness / 150.0) # Corrected: Added tiredness input
 
         outputs = self.net.activate(inputs)
 

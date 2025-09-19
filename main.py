@@ -89,6 +89,7 @@ def run(config_file):
     foods = [Food(world, assets) for _ in range(120)]
     time_info = {'world_time': 0, 'season_timer': 0, 'current_season': "Primavera"}
     generation_timer = 0
+    population_history = []
     
     # --- Loop Principal ---
     running = True

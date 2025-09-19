@@ -106,3 +106,56 @@ def draw_god_mode_ui(screen, current_tool):
 
     screen.blit(bg_surface, bg_rect)
     screen.blit(text, text_rect)
+
+def draw_statistics_panel(screen, history):
+    """Draws a panel with a line graph of population history."""
+    if not history:
+        return
+
+    panel_width, panel_height = 400, 250
+    panel_x, panel_y = 10, SCREEN_HEIGHT - panel_height - 10
+
+    # Draw panel background
+    panel = pygame.Surface((panel_width, panel_height), pygame.SRCALPHA)
+    panel.fill((20, 20, 40, 220))
+
+    # Title
+    title = FONT_MEDIUM.render("Population Over Time", True, (255, 255, 255))
+    panel.blit(title, (10, 5))
+
+    # Graph area
+    graph_rect = pygame.Rect(40, 40, panel_width - 50, panel_height - 50)
+    pygame.draw.rect(panel, (10, 10, 20), graph_rect) # Graph background
+
+    # Find max population for y-axis scaling
+    max_pop = 1
+    for data in history:
+        max_pop = max(max_pop, data['herbivores'], data['carnivores'])
+
+    # Prepare data points
+    herb_points = []
+    carn_points = []
+    for i, data in enumerate(history):
+        x = graph_rect.x + (i / max(1, len(history) - 1)) * graph_rect.width
+
+        y_herb = graph_rect.y + graph_rect.height - (data['herbivores'] / max_pop) * graph_rect.height
+        herb_points.append((x, y_herb))
+
+        y_carn = graph_rect.y + graph_rect.height - (data['carnivores'] / max_pop) * graph_rect.height
+        carn_points.append((x, y_carn))
+
+    # Draw lines
+    if len(herb_points) > 1:
+        pygame.draw.lines(panel, (100, 255, 100), False, herb_points, 2)
+    if len(carn_points) > 1:
+        pygame.draw.lines(panel, (255, 100, 100), False, carn_points, 2)
+
+    # Draw axes and labels
+    pygame.draw.line(panel, (255, 255, 255), (graph_rect.left, graph_rect.bottom), (graph_rect.right, graph_rect.bottom), 1) # X-axis
+    pygame.draw.line(panel, (255, 255, 255), (graph_rect.left, graph_rect.bottom), (graph_rect.left, graph_rect.top), 1) # Y-axis
+    y_axis_label = FONT_SMALL.render(str(max_pop), True, (255, 255, 255))
+    panel.blit(y_axis_label, (graph_rect.left - 30, graph_rect.top - 5))
+    x_axis_label = FONT_SMALL.render(f"{len(history)} days", True, (255, 255, 255))
+    panel.blit(x_axis_label, (graph_rect.right - 40, graph_rect.bottom + 5))
+
+    screen.blit(panel, (panel_x, panel_y))

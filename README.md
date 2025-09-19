@@ -86,7 +86,7 @@ simulador\_vida/
 **3. Instalar as Bibliotecas:**
 Abra o seu terminal ou prompt de comando, navegue até à pasta `simulador_vida` e execute o seguinte comando:
 ```bash
-pip install pygame noise neat-python
+pip install pygame perlin-noise neat-python
 ````
 
 **4. Executar a Simulação:**
