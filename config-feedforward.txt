@@ -9,7 +9,8 @@ reset_on_extinction   = True
 
 [DefaultGenome]
 # --- Core Genome Configuration ---
-num_inputs              = 17
+# 14 base inputs + 6 for Boids + 1 for fleeing state = 21. Let's try 22 with num_tribemates.
+num_inputs              = 22
 num_outputs             = 3
 num_hidden              = 0
 feed_forward            = True
