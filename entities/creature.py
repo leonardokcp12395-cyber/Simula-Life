@@ -35,8 +35,7 @@ class Creature:
         self.reproduction_urge_threshold = attrs['reproduction_urge_threshold']
         self.lifespan = attrs['lifespan']
 
-        # Load animation frames
-        self.animation_frames = assets[f"{self.archetype['sprite_key']}_{self.tribe_id}"]
+        # Load nest sprite
         self.nest_sprite = assets[self.archetype['nest_sprite_key']]
 
         # Position and movement
@@ -58,6 +57,13 @@ class Creature:
         self.target = None
         self.animation_timer = 0
         self.animation_frame_index = 0
+
+        # --- Visual DNA ---
+        self.visual_dna = {
+            'body_size_mod': random.uniform(0.9, 1.1),
+            'pattern_type': random.choice(['none', 'stripes', 'spots']),
+            'pattern_color': tuple(max(0, min(255, c + random.randint(-20, 20))) for c in self.tribe_color)
+        }
 
     def _find_spawn_point(self):
         while True:
@@ -184,22 +190,4 @@ class Creature:
         grid_x, grid_y = int(self.x // CELL_SIZE), int(self.y // CELL_SIZE)
         self.energy -= (speed * 0.1) * self.world_map[grid_x][grid_y]['properties']['energy_cost']
 
-    def draw(self, screen, is_selected):
-        self.animation_timer = (self.animation_timer + 1) % 60
-        if self.animation_timer % 15 == 0:
-            self.animation_frame_index = (self.animation_frame_index + 1) % len(self.animation_frames)
-        current_frame = self.animation_frames[self.animation_frame_index]
-        nest_rect = self.nest_sprite.get_rect(center=(self.nest_x, self.nest_y))
-        screen.blit(self.nest_sprite, nest_rect)
-        rotated_sprite = pygame.transform.rotate(current_frame, -math.degrees(self.angle) + 90)
-        rect = rotated_sprite.get_rect(center=(int(self.x), int(self.y)))
-        shadow_rect = self.assets['shadow'].get_rect(center=(int(self.x+2), int(self.y+2)))
-        screen.blit(self.assets['shadow'], shadow_rect)
-        screen.blit(rotated_sprite, rect)
-        if is_selected:
-            pygame.draw.circle(screen, self.tribe_color, (int(self.x), int(self.y)), self.vision_radius, 1)
-            pygame.draw.line(screen, (255, 255, 255, 100), (self.x, self.y), (self.nest_x, self.nest_y), 1)
-            if self.target:
-                target_x = self.target.x if hasattr(self.target, 'x') else self.target['x']
-                target_y = self.target.y if hasattr(self.target, 'y') else self.target['y']
-                pygame.draw.line(screen, (255, 0, 0, 150), (self.x, self.y), (target_x, target_y), 2)
+    # The draw method is now handled by a dedicated function in rendering/drawing.py
